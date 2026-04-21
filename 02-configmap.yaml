@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-hub-config
+  namespace: event-hub
+data:
+  EUREKA_URL: "http://eureka-server:8761/eureka/"
+  KEYCLOAK_SERVER_URL: "http://keycloak:8080/"
+  KEYCLOAK_ISSUER_URI: "http://keycloak:8080/realms/ec7205"
+  KEYCLOAK_TOKEN_URI: "http://keycloak:8080/realms/ec7205/protocol/openid-connect/token"
+  KEYCLOAK_REALM: "ec7205"
+  KEYCLOAK_CLIENT_ID: "ec7205-client"
+  KEYCLOAK_GRANT_TYPE: "password"
+  KEYCLOAK_CONFIG_NAME: "amirumithsara1234@gmail.com"
+  PUBLIC_KEY_STRING: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApU/j0Bfrcoift2/z2C1ba0eC4HpcHOMcL/WNAlVXtObQ7L1g7110ZM//qCfIHrdAJ38Y+AC9oerM/aLXHrMZVzDaV5gvGIcaTnFdS1fonpzkp+4woN7pShBapkxr7P6WnYvrGWhuEaSfOHJ/tXld7NbKks+6k11Z9GW6KU4Zh0+sahW9X8alaHBDkZJRSNq7COlWyDeWSwJFb7CHXsTod/EQ7+qXAZagplPve+Pw6OOv8RTGqNDNlXVTwrT245ih/IqybxekCxXNw0wYiPrjcPa/4nmssaKlrfm11l0V/uQyW9SHlk1zhaQbVtrWjGT9kTD0G580oNEmbMlyc2dlMwIDAQAB"
+
+  AWS_REGION: "us-east-1"
+  AWS_BUCKET_NAME: "ec7205-event-booking"
+
+  AUTH_NOTIFICATION_QUEUE: "auth.notification.queue"
+  BOOKING_NOTIFICATION_QUEUE: "booking.notification.queue"
+
+  NEXT_PUBLIC_API_BASE_URL: "http://gateway-service:9090"

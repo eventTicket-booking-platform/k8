@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: keycloak-realm-import
+    namespace: event-hub
+    files:
+      - keycloak/ec7205-realm.json
+
+resources:
+  - 00-namespace.yaml
+  - 01-secrets.yaml
+  - 02-configmap.yaml
+  - 03-mysql.yaml
+  - 04-mongodb.yaml
+  - 05-rabbitmq.yaml
+  - 06-keycloak.yaml
+  - 10-eureka-server.yaml
+  - 11-auth-service.yaml
+  - 12-event-service.yaml
+  - 13-booking-service.yaml
+  - 14-notification-service.yaml
+  - 15-gateway-service.yaml
+  - 20-frontend-ticket.yaml
+  - 21-frontend-admin.yaml
+  - 30-ingress.yaml

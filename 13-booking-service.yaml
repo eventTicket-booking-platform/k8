@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+  namespace: event-hub
+spec:
+  ports:
+    - port: 9093
+      targetPort: 9093
+  selector:
+    app: booking-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: event-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      containers:
+        - name: booking-service
+          image: amiru1234/booking-service-api:latest
+          ports:
+            - containerPort: 9093
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SERVER_PORT
+              value: "9093"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/ec7205_booking_service?createDatabaseIfNotExist=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: EUREKA_URL
+            - name: JWT_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_ISSUER_URI
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq
+            - name: SPRING_RABBITMQ_PORT
+              value: "5672"
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: RABBITMQ_DEFAULT_USER
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: RABBITMQ_DEFAULT_PASS
+            - name: EVENTHUB_NOTIFICATION_BOOKING_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: BOOKING_NOTIFICATION_QUEUE

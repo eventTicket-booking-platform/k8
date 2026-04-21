@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-ticket
+  namespace: event-hub
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: frontend-ticket
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-ticket
+  namespace: event-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend-ticket
+  template:
+    metadata:
+      labels:
+        app: frontend-ticket
+    spec:
+      containers:
+        - name: frontend-ticket
+          image: amiru1234/event-ticket-booking-platform:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NEXT_PUBLIC_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: NEXT_PUBLIC_API_BASE_URL

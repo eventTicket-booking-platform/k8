@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: event-hub
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+  selector:
+    app: gateway-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: event-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+        - name: gateway-service
+          image: amiru1234/gateway-service-api:latest
+          ports:
+            - containerPort: 9090
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SERVER_PORT
+              value: "9090"
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: EUREKA_URL
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_ISSUER_URI
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_TOKEN_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_TOKEN_URI
+            - name: PUBLIC_KEY_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: PUBLIC_KEY_STRING
+            - name: KEYCLOAK_CONFIG_REALM
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_REALM
+            - name: KEYCLOAK_CONFIG_SERVER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_SERVER_URL
+            - name: KEYCLOAK_CONFIG_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_CLIENT_ID
+            - name: KEYCLOAK_CONFIG_GRANT_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_GRANT_TYPE
+            - name: KEYCLOAK_CONFIG_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: KEYCLOAK_CONFIG_NAME
+            - name: KEYCLOAK_CONFIG_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
+            - name: KEYCLOAK_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: KEYCLOAK_CONFIG_PASSWORD
