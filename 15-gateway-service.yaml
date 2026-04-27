@@ -33,8 +33,26 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: prod
+            - name: GATEWAY_ROUTES_EVENT_SERVICE_URI
+              value: "http://event-service:9091"
+            - name: GATEWAY_ROUTES_AUTH_SERVICE_URI
+              value: "http://auth-service:9092"
+            - name: GATEWAY_ROUTES_BOOKING_SERVICE_URI
+              value: "http://booking-service:9093"
+            - name: GATEWAY_ROUTES_NOTIFICATION_SERVICE_URI
+              value: "http://notification-service:9094"
+            - name: SPRING_CLOUD_CONFIG_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: CONFIG_SERVER_URL
             - name: SERVER_PORT
               value: "9090"
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               valueFrom:
                 configMapKeyRef:
