@@ -33,23 +33,57 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: prod
+            - name: SPRING_CLOUD_CONFIG_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: CONFIG_SERVER_URL
             - name: SERVER_PORT
               value: "9091"
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:mysql://mysql:3306/ec7205_event_service?createDatabaseIfNotExist=true
-            - name: SPRING_DATASOURCE_USERNAME
-              value: root
-            - name: SPRING_DATASOURCE_PASSWORD
+            - name: MYSQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: MYSQL_HOST
+            - name: MYSQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: MYSQL_PORT
+            - name: MYSQL_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: MYSQL_USERNAME
+            - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: event-hub-secrets
-                  key: MYSQL_ROOT_PASSWORD
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_DATABASE
+              value: ec7205_event_service
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://$(MYSQL_HOST):$(MYSQL_PORT)/$(MYSQL_DATABASE)?createDatabaseIfNotExist=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: $(MYSQL_USERNAME)
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: $(MYSQL_PASSWORD)
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               valueFrom:
                 configMapKeyRef:
                   name: event-hub-config
                   key: EUREKA_URL
-            - name: JWT_ISSUER_URI
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
                   name: event-hub-config
