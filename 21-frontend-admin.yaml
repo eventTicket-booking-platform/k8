@@ -36,4 +36,7 @@ spec:
             - name: PORT
               value: "4000"
             - name: API_BASE_URL
-              value: "http://gateway-service:9090"
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: API_BASE_URL

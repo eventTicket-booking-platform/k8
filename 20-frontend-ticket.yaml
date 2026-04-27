@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: frontend-ticket
   namespace: event-hub
+  annotations:
+    cloud.google.com/backend-config: '{"default":"frontend-ticket-backendconfig"}'
+    cloud.google.com/neg: '{"ingress": true}'
 spec:
   ports:
     - port: 3000
@@ -30,6 +33,22 @@ spec:
           image: amiru1234/event-ticket-booking-platform:latest
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
           env:
             - name: NODE_ENV
               value: production
@@ -38,3 +57,13 @@ spec:
                 configMapKeyRef:
                   name: event-hub-config
                   key: NEXT_PUBLIC_API_BASE_URL
+            - name: SERVER_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: SERVER_API_BASE_URL
+            - name: SERVER_EVENTS_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: event-hub-config
+                  key: SERVER_EVENTS_API_BASE_URL
