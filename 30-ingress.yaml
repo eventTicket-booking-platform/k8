@@ -3,22 +3,57 @@ kind: Ingress
 metadata:
   name: event-hub-ingress
   namespace: event-hub
+  annotations:
+    kubernetes.io/ingress.class: gce
+    # Optional after reserving a static global IP:
+    # kubernetes.io/ingress.global-static-ip-name: event-hub-ip
 spec:
-  ingressClassName: nginx
+  ingressClassName: gce
   rules:
-    - host: api.eventhub.local
-      http:
+    - http:
         paths:
-          - path: /
+          - path: /user-service
             pathType: Prefix
             backend:
               service:
                 name: gateway-service
                 port:
                   number: 9090
-    - host: app.eventhub.local
-      http:
-        paths:
+          - path: /event-service
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 9090
+          - path: /booking-service
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 9090
+          - path: /notification-service
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 9090
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 9090
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-admin
+                port:
+                  number: 4000
           - path: /
             pathType: Prefix
             backend:
@@ -26,23 +61,3 @@ spec:
                 name: frontend-ticket
                 port:
                   number: 3000
-    - host: admin.eventhub.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend-admin
-                port:
-                  number: 4000
-    - host: keycloak.eventhub.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: keycloak
-                port:
-                  number: 8080
