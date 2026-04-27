@@ -5,9 +5,15 @@ metadata:
   namespace: event-hub
 data:
   EUREKA_URL: "http://eureka-server:8761/eureka/"
-  KEYCLOAK_SERVER_URL: "http://keycloak:8080/"
-  KEYCLOAK_ISSUER_URI: "http://keycloak:8080/realms/ec7205"
-  KEYCLOAK_TOKEN_URI: "http://keycloak:8080/realms/ec7205/protocol/openid-connect/token"
+  CONFIG_SERVER_URL: "http://config-server:8888"
+  CONFIG_GIT_URI: "https://github.com/eventTicket-booking-platform/config-repo.git"
+  CONFIG_GIT_LABEL: "main"
+  MYSQL_HOST: "35.223.83.252"
+  MYSQL_PORT: "3306"
+  MYSQL_USERNAME: "root"
+  KEYCLOAK_SERVER_URL: "http://44.209.59.43:8080/"
+  KEYCLOAK_ISSUER_URI: "http://44.209.59.43:8080/realms/ec7205"
+  KEYCLOAK_TOKEN_URI: "http://44.209.59.43:8080/realms/ec7205/protocol/openid-connect/token"
   KEYCLOAK_REALM: "ec7205"
   KEYCLOAK_CLIENT_ID: "ec7205-client"
   KEYCLOAK_GRANT_TYPE: "password"
@@ -20,4 +26,8 @@ data:
   AUTH_NOTIFICATION_QUEUE: "auth.notification.queue"
   BOOKING_NOTIFICATION_QUEUE: "booking.notification.queue"
 
-  NEXT_PUBLIC_API_BASE_URL: "http://gateway-service:9090"
+  # for browser-side calls, use the current site origin through ingress instead of a hardcoded IP
+  NEXT_PUBLIC_API_BASE_URL: ""
+  SERVER_API_BASE_URL: "http://gateway-service:9090/api"
+  SERVER_EVENTS_API_BASE_URL: "http://event-service:9091"
+  API_BASE_URL: "/api"
