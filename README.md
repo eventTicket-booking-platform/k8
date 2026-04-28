@@ -191,6 +191,141 @@ kubectl get svc -n event-hub
 kubernetes.io/ingress.global-static-ip-name: event-hub-ip
 ```
 
+## GKE Cluster Infrastructure (Terraform)
+
+The `gke-cluster.tf` file provisions a production-ready GKE cluster using Terraform. This infrastructure must be created before deploying the Kubernetes manifests.
+
+### GKE Cluster Specifications
+
+The Terraform configuration creates a GKE cluster with the following specifications:
+
+**Cluster Configuration:**
+
+- **Cluster Name:** `cluster-1-replicated`
+- **Region/Zone:** `us-central1-a`
+- **Networking Mode:** VPC Native (recommended for GKE)
+- **Release Channel:** REGULAR (automatic, non-disruptive updates)
+- **Deletion Protection:** Disabled (for easier cleanup in test environments)
+
+**Network Configuration:**
+
+- **VPC Network:** `gke-vpc`
+- **Subnet:** `gke-subnet`
+- **VPC CIDR:** `10.0.0.0/16`
+- **Pod IP Range:** `10.1.0.0/16` (secondary range)
+- **Service IP Range:** `10.2.0.0/20` (secondary range)
+
+**Node Pool:**
+
+- **Name:** `default-pool`
+- **Node Count:** 2
+- **Machine Type:** `e2-medium` (2 vCPU, 4 GB memory per node)
+- **Image Type:** `COS_CONTAINERD` (Container-Optimized OS with containerd)
+- **Disk Configuration:**
+  - **Type:** `pd-balanced` (balanced performance and cost)
+  - **Size:** 15 GB per node
+- **Security Features:**
+  - Shielded nodes enabled (secure boot and integrity monitoring)
+  - Auto-upgrade enabled
+  - Auto-repair enabled
+- **Monitoring & Logging:**
+  - System components and workload logging enabled
+  - Comprehensive monitoring (pods, deployments, statefulsets, daemonsets, HPA, storage, kubelet, cAdvisor)
+  - Managed Prometheus enabled
+
+### Prerequisites for Terraform Provisioning
+
+Before running Terraform, ensure you have:
+
+1. **GCP Project Setup:**
+   - Active GCP project with billing enabled
+   - GCP CLI (`gcloud`) installed and authenticated: `gcloud auth application-default login`
+   - Project ID set: `gcloud config set project YOUR_PROJECT_ID`
+
+2. **Terraform Installation:**
+   - Terraform CLI v1.0+ installed
+   - GCP provider access
+
+3. **Required GCP Permissions:**
+   - `compute.networks.create`
+   - `compute.subnetworks.create`
+   - `container.clusters.create`
+   - `container.nodePools.create`
+
+### Terraform Provisioning Steps
+
+1. **Initialize Terraform:**
+
+```powershell
+cd <path-to-k8s-directory>
+terraform init
+```
+
+2. **Review the Terraform plan:**
+
+```powershell
+terraform plan -out=tfplan
+```
+
+This shows all resources that will be created. Review for any unexpected changes.
+
+3. **Apply the Terraform configuration:**
+
+```powershell
+terraform apply tfplan
+```
+
+This provisions:
+
+- VPC network and subnet
+- GKE cluster
+- Node pool with 2 e2-medium nodes
+
+The provisioning typically takes 5-10 minutes.
+
+4. **Get cluster credentials:**
+
+Once the cluster is created, configure `kubectl` to access it:
+
+```powershell
+gcloud container clusters get-credentials cluster-1-replicated --zone us-central1-a
+```
+
+5. **Verify cluster creation:**
+
+```powershell
+kubectl cluster-info
+kubectl get nodes
+```
+
+You should see 2 nodes in Ready state.
+
+### Post-Provisioning
+
+After the GKE cluster is successfully created and nodes are ready, proceed with **GKE Steps** above to deploy the Event Hub services.
+
+### Cleaning Up Infrastructure
+
+To remove the GKE cluster and all related infrastructure:
+
+```powershell
+terraform destroy
+```
+
+⚠️ **Warning:** This will delete the cluster, all running services, and associated data. Ensure backups exist before running this command.
+
+### Customizing the Cluster
+
+To modify cluster specifications, edit `gke-cluster.tf` before provisioning:
+
+- **Change node count:** Update `node_count` in the `google_container_node_pool` resource
+- **Change machine type:** Modify `machine_type` (e.g., `e2-standard-4` for larger nodes)
+- **Change region/zone:** Update `location` fields (must be consistent)
+- **Adjust disk size:** Modify `disk_size_gb`
+- **Enable deletion protection:** Set `deletion_protection = true` for production
+
+After changes, run `terraform plan` and `terraform apply` to update the cluster.
+
 ## Health and Troubleshooting
 
 Useful commands:
