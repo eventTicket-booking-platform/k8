@@ -47,6 +47,27 @@ spec:
                 name: gateway-service
                 port:
                   number: 9090
+          - path: /eureka
+            pathType: Prefix
+            backend:
+              service:
+                name: eureka-server
+                port:
+                  number: 8761
+          - path: /rabbitmq
+            pathType: Prefix
+            backend:
+              service:
+                name: rabbitmq
+                port:
+                  number: 15672
+          - path: /rabbitmq/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: rabbitmq
+                port:
+                  number: 15672
           - path: /admin
             pathType: Prefix
             backend:

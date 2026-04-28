@@ -26,6 +26,20 @@ spec:
   selector:
     app: rabbitmq
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  namespace: event-hub
+spec:
+  type: LoadBalancer
+  ports:
+    - name: management
+      port: 15672
+      targetPort: 15672
+  selector:
+    app: rabbitmq
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
