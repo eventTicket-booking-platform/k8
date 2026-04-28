@@ -95,6 +95,68 @@ Review [`02-configmap.yaml`](./02-configmap.yaml) before deploy, especially:
 
 This path is for Docker Desktop Kubernetes, Minikube, or kind.
 
+### Local Keycloak Setup
+
+This project already includes a Keycloak realm export at [`keyclock/ec7205-realm.json`](./keyclock/ec7205-realm.json), and the local Keycloak distribution available in the workspace is `keycloak-26.5.7`.
+
+Use Keycloak version `26.5.7` for local setup so the imported realm matches the current project setup.
+
+#### Expected Keycloak values after import
+
+- Realm: `ec7205`
+- Client ID: `ec7205-client`
+- Bootstrap user in realm export: `amirumithsara1234@gmail.com`
+- Project roles in realm export: `admin`, `host`, `user`
+
+#### Start Keycloak locally with the realm import
+
+From the project root:
+
+1. Copy the realm file into Keycloak's import directory:
+
+```powershell
+New-Item -ItemType Directory -Force ..\keycloak-26.5.7\data\import
+Copy-Item .\keyclock\ec7205-realm.json ..\keycloak-26.5.7\data\import\ec7205-realm.json -Force
+```
+
+2. Start Keycloak in development mode with import enabled:
+
+```powershell
+cd ..\keycloak-26.5.7\bin
+$env:KEYCLOAK_ADMIN="admin"
+$env:KEYCLOAK_ADMIN_PASSWORD="admin123"
+.\kc.bat start-dev --http-port=8080 --import-realm
+```
+
+3. Verify Keycloak is running:
+
+- Admin console: `http://localhost:8080/admin`
+- Realm issuer: `http://localhost:8080/realms/ec7205`
+
+#### Connect local Keycloak to this project
+
+Update [`02-configmap.yaml`](./02-configmap.yaml) for local use:
+
+- `KEYCLOAK_SERVER_URL: "http://host.docker.internal:8080/"` for Docker Desktop Kubernetes on Windows
+- or `KEYCLOAK_SERVER_URL: "http://localhost:8080/"` only if your workload can resolve the host loopback correctly
+- `KEYCLOAK_ISSUER_URI: "http://host.docker.internal:8080/realms/ec7205"`
+- `KEYCLOAK_TOKEN_URI: "http://host.docker.internal:8080/realms/ec7205/protocol/openid-connect/token"`
+- `KEYCLOAK_REALM: "ec7205"`
+- `KEYCLOAK_CLIENT_ID: "ec7205-client"`
+
+Update `01-secrets.yaml` to match the imported realm:
+
+- `KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_CONFIG_NAME`
+- `KEYCLOAK_CONFIG_PASSWORD`
+
+The current realm export and existing config expect:
+
+- user email: `amirumithsara1234@gmail.com`
+- client secret: `yJq1nWO8BsEteqCXcDu3CEVZ2quiXus9`
+
+The password used by `KEYCLOAK_CONFIG_PASSWORD` must match the imported user password in Keycloak. If you reset that user password in the admin console, update `01-secrets.yaml` to the same value before starting `auth-service` or `gateway-service`.
+
 ### Important Local Limitation
 
 [`19-frontend-ticket-backendconfig.yaml`](./19-frontend-ticket-backendconfig.yaml) and [`30-ingress.yaml`](./30-ingress.yaml) are written for GCP GKE with GCE ingress. They are not portable as-is to a generic local cluster.
@@ -107,19 +169,26 @@ For local work, the reliable path is:
 
 ### Local Steps
 
-1. Apply secrets:
+1. Start external dependencies first:
+
+- MySQL
+- MongoDB
+- Keycloak `26.5.7`
+- any required config repo access
+
+2. Apply secrets:
 
 ```powershell
 kubectl apply -f 01-secrets.yaml
 ```
 
-2. Deploy the stack:
+3. Deploy the stack:
 
 ```powershell
 kubectl apply -k .
 ```
 
-3. Verify rollout:
+4. Verify rollout:
 
 ```powershell
 kubectl get pods -n event-hub
@@ -127,7 +196,7 @@ kubectl get svc -n event-hub
 kubectl get pvc -n event-hub
 ```
 
-4. Port-forward the important services:
+5. Port-forward the important services:
 
 ```powershell
 kubectl port-forward -n event-hub svc/frontend-ticket 3000:3000
@@ -161,23 +230,134 @@ Your manifests are aligned with GKE, not EKS. The repo uses:
 - GCE ingress enabled
 - public reachability from the cluster to MySQL, Keycloak, MongoDB, Git config repo, AWS, and Brevo
 
+### External Keycloak on EC2 `t2.micro`
+
+For this architecture, GKE runs the application workloads and Keycloak runs separately on an AWS EC2 instance. This is acceptable for a small demo or test environment, but `t2.micro` is only suitable for very light usage.
+
+Use Keycloak version `26.5.7` here as well.
+
+#### 1. Create the EC2 instance
+
+Recommended minimum setup for the current project request:
+
+- Instance type: `t2.micro`
+- OS: Ubuntu 22.04 LTS or Amazon Linux 2023
+- Storage: at least `15 GB`
+- Open inbound ports:
+  - `22` for SSH from your IP only
+  - `8080` for Keycloak HTTP access from the internet or at least from your GKE egress ranges
+
+You can create the instance from the AWS Console:
+
+1. Open EC2 in AWS.
+2. Launch instance.
+3. Choose `t2.micro`.
+4. Attach or create a key pair.
+5. Configure the security group with `22` and `8080`.
+6. Launch and note the public IP or DNS name.
+
+#### 2. Install Keycloak 26.5.7 on EC2
+
+SSH into the instance, then install Java 17 and Keycloak.
+
+Example on Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-17-jdk unzip
+cd /opt
+sudo wget https://github.com/keycloak/keycloak/releases/download/26.5.7/keycloak-26.5.7.zip
+sudo unzip keycloak-26.5.7.zip
+sudo mv keycloak-26.5.7 keycloak
+```
+
+#### 3. Import `ec7205-realm.json`
+
+Copy the realm file from this repo to the EC2 instance, for example:
+
+```bash
+scp ec7205-realm.json ubuntu@<EC2_PUBLIC_IP>:/tmp/ec7205-realm.json
+```
+
+Then on EC2:
+
+```bash
+sudo mkdir -p /opt/keycloak/data/import
+sudo mv /tmp/ec7205-realm.json /opt/keycloak/data/import/ec7205-realm.json
+cd /opt/keycloak/bin
+export KEYCLOAK_ADMIN=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin123
+./kc.sh start-dev --http-port=8080 --import-realm
+```
+
+After startup, verify:
+
+- `http://<EC2_PUBLIC_IP>:8080/admin`
+- `http://<EC2_PUBLIC_IP>:8080/realms/ec7205`
+
+#### 4. Verify imported realm values
+
+After importing [`keyclock/ec7205-realm.json`](./keyclock/ec7205-realm.json), confirm:
+
+- Realm exists: `ec7205`
+- Client exists: `ec7205-client`
+- Roles exist: `admin`, `host`, `user`
+- User exists: `amirumithsara1234@gmail.com`
+- Client secret matches the project secret value
+
+If needed, reset the imported user password in the admin console and keep the same value in `01-secrets.yaml`.
+
+#### 5. Connect EC2 Keycloak to the GKE workloads
+
+Update [`02-configmap.yaml`](./02-configmap.yaml) before deployment:
+
+- `KEYCLOAK_SERVER_URL: "http://<EC2_PUBLIC_IP>:8080/"`
+- `KEYCLOAK_ISSUER_URI: "http://<EC2_PUBLIC_IP>:8080/realms/ec7205"`
+- `KEYCLOAK_TOKEN_URI: "http://<EC2_PUBLIC_IP>:8080/realms/ec7205/protocol/openid-connect/token"`
+- `KEYCLOAK_REALM: "ec7205"`
+- `KEYCLOAK_CLIENT_ID: "ec7205-client"`
+
+Update [`01-secrets.yaml`](./01-secrets.yaml):
+
+- `KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_CONFIG_NAME`
+- `KEYCLOAK_CONFIG_PASSWORD`
+
+At that point:
+
+- `auth-service` can authenticate against the imported Keycloak realm
+- `gateway-service` and other JWT resource servers can validate issuer metadata from the EC2-hosted realm
+- frontends can continue using the gateway without direct Keycloak browser integration
+
+#### 6. Recommended production improvement
+
+For anything beyond a demo, do not leave Keycloak on public HTTP port `8080`. Put it behind:
+
+- a domain name
+- HTTPS termination
+- a stronger instance size than `t2.micro`
+- persistent database-backed Keycloak storage
+- tighter security-group rules
+
 ### GKE Steps
 
-1. Prepare `01-secrets.yaml`.
-2. Update `02-configmap.yaml` with production endpoints.
-3. Apply secrets:
+1. Create the GKE cluster.
+2. Create and validate the external Keycloak EC2 instance.
+3. Prepare `01-secrets.yaml`.
+4. Update `02-configmap.yaml` with production endpoints, especially the Keycloak URLs pointing to EC2.
+5. Apply secrets:
 
 ```powershell
 kubectl apply -f 01-secrets.yaml
 ```
 
-4. Apply resources:
+6. Apply resources:
 
 ```powershell
 kubectl apply -k .
 ```
 
-5. Verify:
+7. Verify:
 
 ```powershell
 kubectl get ingress -n event-hub
@@ -185,7 +365,7 @@ kubectl get pods -n event-hub
 kubectl get svc -n event-hub
 ```
 
-6. If you reserve a static global IP in GCP, uncomment this annotation in `30-ingress.yaml`:
+8. If you reserve a static global IP in GCP, uncomment this annotation in `30-ingress.yaml`:
 
 ```yaml
 kubernetes.io/ingress.global-static-ip-name: event-hub-ip
