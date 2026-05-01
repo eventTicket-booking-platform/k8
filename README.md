@@ -2,6 +2,34 @@
 
 This repository contains the Kubernetes deployment manifests for the Event Hub microservice platform.
 
+## Configuration Management with Kustomize
+
+This project uses [Kustomize](https://kustomize.io/) for managing and customizing Kubernetes manifests. Kustomize is a tool that allows you to customize raw, template-free YAML files for multiple purposes, leaving the original YAML untouched and usable as-is.
+
+The `kustomization.yaml` file in the root directory defines the set of resources to be deployed and any customizations such as namespace overrides, image tags, or patches.
+
+### Prerequisites for Deployment
+
+- `kubectl` installed and configured to access your Kubernetes cluster.
+- Kustomize is built into `kubectl` (version 1.14+), so no separate installation is needed.
+- External dependencies (MySQL, Keycloak, etc.) must be available as described below.
+
+### Deploying to Kubernetes Cluster
+
+To deploy this project to a Kubernetes cluster:
+
+1. Clone or navigate to this repository.
+2. Prepare secrets and config as described in the [Secrets and Config](#secrets-and-config) section.
+3. Run the following command from the repository root:
+
+   ```bash
+   kubectl apply -k .
+   ```
+
+   This command uses Kustomize to apply all manifests, ensuring services start in the correct order and with proper configurations.
+
+For environment-specific deployments, create overlays in subdirectories with their own `kustomization.yaml` files that reference the base resources and apply patches.
+
 ## Deployed Components
 
 Infrastructure and platform services:
@@ -32,6 +60,8 @@ Ingress routes:
 - `/event-service` -> `gateway-service`
 - `/booking-service` -> `gateway-service`
 - `/notification-service` -> `gateway-service`
+- `/eureka` -> `eureka-server`
+- `/rabbitmq/*` -> `rabbitmq`
 
 ## External Dependencies
 
@@ -45,7 +75,7 @@ This repo does not deploy everything. These must already exist or be reachable:
 
 ## Deploy Order
 
-To have every service come up cleanly, use this order:
+The `kustomization.yaml` file defines the resources in the correct deployment order to ensure dependencies are met. When you run `kubectl apply -k .`, Kustomize applies the manifests in sequence:
 
 1. namespace
 2. secrets
@@ -62,15 +92,11 @@ To have every service come up cleanly, use this order:
 13. frontend-admin
 14. ingress
 
+This order ensures that infrastructure services (like RabbitMQ, Config Server, Eureka) are available before business services start.
+
 ## Secrets and Config
 
-Start from the safe template:
-
-```powershell
-Copy-Item 01-secrets.local.example.yaml 01-secrets.yaml
-```
-
-Then fill real values for:
+Rename `01-secrets.local.example.yaml` to `01-secrets.yaml` and fill in the real values for:
 
 - MySQL password
 - MongoDB credentials and URI
@@ -105,27 +131,58 @@ Use Keycloak version `26.5.7` for local setup so the imported realm matches the 
 
 - Realm: `ec7205`
 - Client ID: `ec7205-client`
-- Bootstrap user in realm export: `amirumithsara1234@gmail.com`
 - Project roles in realm export: `admin`, `host`, `user`
 
 #### Start Keycloak locally with the realm import
 
 From the project root:
 
-1. Copy the realm file into Keycloak's import directory:
+1. Download and extract Keycloak 26.5.7:
 
-```powershell
-New-Item -ItemType Directory -Force ..\keycloak-26.5.7\data\import
-Copy-Item .\keyclock\ec7205-realm.json ..\keycloak-26.5.7\data\import\ec7205-realm.json -Force
+```bash
+wget https://github.com/keycloak/keycloak/releases/download/26.5.7/keycloak-26.5.7.zip
+unzip keycloak-26.5.7.zip
 ```
 
-2. Start Keycloak in development mode with import enabled:
+2. Copy the realm file into Keycloak's import directory:
 
-```powershell
-cd ..\keycloak-26.5.7\bin
-$env:KEYCLOAK_ADMIN="admin"
-$env:KEYCLOAK_ADMIN_PASSWORD="admin123"
-.\kc.bat start-dev --http-port=8080 --import-realm
+```bash
+mkdir -p keycloak-26.5.7/data/import
+cp ./keyclock/ec7205-realm.json keycloak-26.5.7/data/import/ec7205-realm.json
+```
+
+**Note:** Before starting Keycloak, update `keyclock/ec7205-realm.json` with your specific user details (e.g., email, password) if needed.
+
+```json
+{
+  "id": "9482a854-2a00-4c70-a99e-ca60a945c438",
+  "username": "your@gmail.com",
+  "firstName": "firstname",
+  "lastName": "lastName",
+  "email": "your@gmail.com",
+  "emailVerified": true,
+  "enabled": true,
+  "createdTimestamp": 1775365922330,
+  "totp": false,
+  "credentials": [
+    {
+      "id": "1dbe5dcc-76af-425d-bddc-cc36e1405dae",
+      "type": "password",
+      "userLabel": "My password",
+      "createdDate": 1776007399750,
+      "secretData": "{\"value\":\"G/V3ye8ifqt0FVNOku1zKxPbuBACsDKWlrDM/bKZ0yA=\",\"salt\":\"3RUis2NC1ADi7ZoYXcfs5A==\",\"additionalParameters\":{}}",
+      "credentialData": "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    }
+  ],
+```
+
+3. Start Keycloak in development mode with import enabled:
+
+```bash
+cd ../keycloak-26.5.7/bin
+export KEYCLOAK_ADMIN=admin
+export KEYCLOAK_ADMIN_PASSWORD=admin123
+./kc.sh start-dev --http-port=8080 --import-realm
 ```
 
 3. Verify Keycloak is running:
@@ -150,11 +207,6 @@ Update `01-secrets.yaml` to match the imported realm:
 - `KEYCLOAK_CONFIG_NAME`
 - `KEYCLOAK_CONFIG_PASSWORD`
 
-The current realm export and existing config expect:
-
-- user email: `amirumithsara1234@gmail.com`
-- client secret: `yJq1nWO8BsEteqCXcDu3CEVZ2quiXus9`
-
 The password used by `KEYCLOAK_CONFIG_PASSWORD` must match the imported user password in Keycloak. If you reset that user password in the admin console, update `01-secrets.yaml` to the same value before starting `auth-service` or `gateway-service`.
 
 ### Important Local Limitation
@@ -178,19 +230,19 @@ For local work, the reliable path is:
 
 2. Apply secrets:
 
-```powershell
+```bash
 kubectl apply -f 01-secrets.yaml
 ```
 
-3. Deploy the stack:
+3. Deploy the stack using Kustomize:
 
-```powershell
+```bash
 kubectl apply -k .
 ```
 
 4. Verify rollout:
 
-```powershell
+```bash
 kubectl get pods -n event-hub
 kubectl get svc -n event-hub
 kubectl get pvc -n event-hub
@@ -198,7 +250,7 @@ kubectl get pvc -n event-hub
 
 5. Port-forward the important services:
 
-```powershell
+```bash
 kubectl port-forward -n event-hub svc/frontend-ticket 3000:3000
 kubectl port-forward -n event-hub svc/frontend-admin 4000:4000
 kubectl port-forward -n event-hub svc/gateway-service 9090:9090
@@ -279,6 +331,8 @@ Copy the realm file from this repo to the EC2 instance, for example:
 scp ec7205-realm.json ubuntu@<EC2_PUBLIC_IP>:/tmp/ec7205-realm.json
 ```
 
+**Note:** Before importing, update `ec7205-realm.json` with your specific user details (e.g., email, password) if needed.
+
 Then on EC2:
 
 ```bash
@@ -302,10 +356,7 @@ After importing [`keyclock/ec7205-realm.json`](./keyclock/ec7205-realm.json), co
 - Realm exists: `ec7205`
 - Client exists: `ec7205-client`
 - Roles exist: `admin`, `host`, `user`
-- User exists: `amirumithsara1234@gmail.com`
-- Client secret matches the project secret value
-
-If needed, reset the imported user password in the admin console and keep the same value in `01-secrets.yaml`.
+  If needed, reset the imported user password in the admin console and keep the same value in `01-secrets.yaml`.
 
 #### 5. Connect EC2 Keycloak to the GKE workloads
 
@@ -339,6 +390,141 @@ For anything beyond a demo, do not leave Keycloak on public HTTP port `8080`. Pu
 - persistent database-backed Keycloak storage
 - tighter security-group rules
 
+## GKE Cluster Infrastructure (Terraform)
+
+The `gke-cluster.tf` file provisions a production-ready GKE cluster using Terraform. This infrastructure must be created before deploying the Kubernetes manifests.
+
+### GKE Cluster Specifications
+
+The Terraform configuration creates a GKE cluster with the following specifications:
+
+**Cluster Configuration:**
+
+- **Cluster Name:** `cluster-1-replicated`
+- **Region/Zone:** `us-central1-a`
+- **Networking Mode:** VPC Native (recommended for GKE)
+- **Release Channel:** REGULAR (automatic, non-disruptive updates)
+- **Deletion Protection:** Disabled (for easier cleanup in test environments)
+
+**Network Configuration:**
+
+- **VPC Network:** `gke-vpc`
+- **Subnet:** `gke-subnet`
+- **VPC CIDR:** `10.0.0.0/16`
+- **Pod IP Range:** `10.1.0.0/16` (secondary range)
+- **Service IP Range:** `10.2.0.0/20` (secondary range)
+
+**Node Pool:**
+
+- **Name:** `default-pool`
+- **Node Count:** 2
+- **Machine Type:** `e2-medium` (2 vCPU, 4 GB memory per node)
+- **Image Type:** `COS_CONTAINERD` (Container-Optimized OS with containerd)
+- **Disk Configuration:**
+  - **Type:** `pd-balanced` (balanced performance and cost)
+  - **Size:** 15 GB per node
+- **Security Features:**
+  - Shielded nodes enabled (secure boot and integrity monitoring)
+  - Auto-upgrade enabled
+  - Auto-repair enabled
+- **Monitoring & Logging:**
+  - System components and workload logging enabled
+  - Comprehensive monitoring (pods, deployments, statefulsets, daemonsets, HPA, storage, kubelet, cAdvisor)
+  - Managed Prometheus enabled
+
+### Prerequisites for Terraform Provisioning
+
+Before running Terraform, ensure you have:
+
+1. **GCP Project Setup:**
+   - Active GCP project with billing enabled
+   - GCP CLI (`gcloud`) installed and authenticated: `gcloud auth application-default login`
+   - Project ID set: `gcloud config set project YOUR_PROJECT_ID`
+
+2. **Terraform Installation:**
+   - Terraform CLI v1.0+ installed
+   - GCP provider access
+
+3. **Required GCP Permissions:**
+   - `compute.networks.create`
+   - `compute.subnetworks.create`
+   - `container.clusters.create`
+   - `container.nodePools.create`
+
+### Terraform Provisioning Steps
+
+1. **Initialize Terraform:**
+
+```bash
+cd <path-to-k8s-directory>
+terraform init
+```
+
+2. **Review the Terraform plan:**
+
+```bash
+terraform plan -out=tfplan
+```
+
+This shows all resources that will be created. Review for any unexpected changes.
+
+3. **Apply the Terraform configuration:**
+
+```bash
+terraform apply tfplan
+```
+
+This provisions:
+
+- VPC network and subnet
+- GKE cluster
+- Node pool with 2 e2-medium nodes
+
+The provisioning typically takes 5-10 minutes.
+
+4. **Get cluster credentials:**
+
+Once the cluster is created, configure `kubectl` to access it:
+
+```bash
+gcloud container clusters get-credentials cluster-1-replicated --zone us-central1-a
+```
+
+5. **Verify cluster creation:**
+
+```bash
+kubectl cluster-info
+kubectl get nodes
+```
+
+You should see 2 nodes in Ready state.
+
+### Post-Provisioning
+
+After the GKE cluster is successfully created and nodes are ready, proceed with **GKE Steps** below to deploy the Event Hub services.
+
+### Cleaning Up Infrastructure
+
+To remove the GKE cluster and all related infrastructure:
+
+```bash
+terraform destroy
+```
+
+⚠️ **Warning:** This will delete the cluster, all running services, and associated data. Ensure backups exist before running this command.
+
+### Customizing the Cluster
+
+To modify cluster specifications, edit `gke-cluster.tf` before provisioning:
+
+- **Change node count:** Update `node_count` in the `google_container_node_pool` resource
+- **Change machine type:** Modify `machine_type` (e.g., `e2-standard-4` for larger nodes)
+- **Change region/zone:** Update `location` fields (must be consistent)
+- **Adjust disk size:** Modify `disk_size_gb`
+- **Enable deletion protection:** Set `deletion_protection = true` for production
+
+After changes, run `terraform plan` and `terraform apply` to update the cluster.
+
 ### GKE Steps
 
 1. Create the GKE cluster.
@@ -347,19 +533,19 @@ For anything beyond a demo, do not leave Keycloak on public HTTP port `8080`. Pu
 4. Update `02-configmap.yaml` with production endpoints, especially the Keycloak URLs pointing to EC2.
 5. Apply secrets:
 
-```powershell
+```bash
 kubectl apply -f 01-secrets.yaml
 ```
 
-6. Apply resources:
+6. Apply resources using Kustomize:
 
-```powershell
+```bash
 kubectl apply -k .
 ```
 
 7. Verify:
 
-```powershell
+```bash
 kubectl get ingress -n event-hub
 kubectl get pods -n event-hub
 kubectl get svc -n event-hub
@@ -436,14 +622,14 @@ Before running Terraform, ensure you have:
 
 1. **Initialize Terraform:**
 
-```powershell
+```bash
 cd <path-to-k8s-directory>
 terraform init
 ```
 
 2. **Review the Terraform plan:**
 
-```powershell
+```bash
 terraform plan -out=tfplan
 ```
 
@@ -451,7 +637,7 @@ This shows all resources that will be created. Review for any unexpected changes
 
 3. **Apply the Terraform configuration:**
 
-```powershell
+```bash
 terraform apply tfplan
 ```
 
@@ -467,13 +653,13 @@ The provisioning typically takes 5-10 minutes.
 
 Once the cluster is created, configure `kubectl` to access it:
 
-```powershell
+```bash
 gcloud container clusters get-credentials cluster-1-replicated --zone us-central1-a
 ```
 
 5. **Verify cluster creation:**
 
-```powershell
+```bash
 kubectl cluster-info
 kubectl get nodes
 ```
@@ -488,7 +674,7 @@ After the GKE cluster is successfully created and nodes are ready, proceed with 
 
 To remove the GKE cluster and all related infrastructure:
 
-```powershell
+```bash
 terraform destroy
 ```
 
@@ -504,13 +690,11 @@ To modify cluster specifications, edit `gke-cluster.tf` before provisioning:
 - **Adjust disk size:** Modify `disk_size_gb`
 - **Enable deletion protection:** Set `deletion_protection = true` for production
 
-After changes, run `terraform plan` and `terraform apply` to update the cluster.
-
 ## Health and Troubleshooting
 
 Useful commands:
 
-```powershell
+```bash
 kubectl logs -n event-hub deploy/config-server
 kubectl logs -n event-hub deploy/eureka-server
 kubectl logs -n event-hub deploy/gateway-service
