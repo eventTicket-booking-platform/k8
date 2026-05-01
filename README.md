@@ -219,6 +219,17 @@ For local work, the reliable path is:
 2. apply the manifests
 3. reach services through `kubectl port-forward`
 
+### Local Prerequisites
+
+Before deploying locally, ensure you have the following installed:
+
+- **Docker Desktop**: For running Kubernetes locally (or Minikube, kind).
+- **Java 17**: Required for running Spring Boot services and Keycloak.
+- **Node.js and npm**: For building and running the frontend applications (Angular 20).
+- **MySQL**: Database server for the application.
+- **MongoDB**: Database server for certain services.
+- **MongoDB Compass**: GUI tool for managing MongoDB databases (optional but recommended).
+
 ### Local Steps
 
 1. Start external dependencies first:
