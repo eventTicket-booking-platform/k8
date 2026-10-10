@@ -1,2 +1,4 @@
 01-secrets.yaml
+overlays/local/01-secrets.yaml
+overlays/gke/01-secrets.yaml
 *.txt
