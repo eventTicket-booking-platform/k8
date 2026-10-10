@@ -1,45 +1,44 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: event-service
+  name: booking-service
   namespace: event-hub
 spec:
   ports:
-    - port: 9091
-      targetPort: 9091
+    - port: 9093
+      targetPort: 9093
   selector:
-    app: event-service
+    app: booking-service
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: event-service
+  name: booking-service
   namespace: event-hub
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: event-service
+      app: booking-service
   template:
     metadata:
       labels:
-        app: event-service
+        app: booking-service
     spec:
       containers:
-        - name: event-service
-          image: amiru1234/event-service-api:latest
+        - name: booking-service
+          image: amiru1234/booking-service-api:latest
           ports:
-            - containerPort: 9091
+            - containerPort: 9093
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: prod
+
             - name: SPRING_CLOUD_CONFIG_URI
               valueFrom:
                 configMapKeyRef:
                   name: event-hub-config
                   key: CONFIG_SERVER_URL
             - name: SERVER_PORT
-              value: "9091"
+              value: "9093"
             - name: MYSQL_HOST
               valueFrom:
                 configMapKeyRef:
@@ -61,17 +60,12 @@ spec:
                   name: event-hub-secrets
                   key: MYSQL_PASSWORD
             - name: MYSQL_DATABASE
-              value: ec7205_event_service
-            - name: AWS_ACCESS_KEY_ID
+              value: ec7205_booking_service
+            - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: event-hub-secrets
-                  key: AWS_ACCESS_KEY_ID
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: event-hub-secrets
-                  key: AWS_SECRET_ACCESS_KEY
+                  key: RABBITMQ_DEFAULT_PASS
             - name: SPRING_DATASOURCE_URL
               value: jdbc:mysql://$(MYSQL_HOST):$(MYSQL_PORT)/$(MYSQL_DATABASE)?createDatabaseIfNotExist=true
             - name: SPRING_DATASOURCE_USERNAME
@@ -88,23 +82,22 @@ spec:
                 configMapKeyRef:
                   name: event-hub-config
                   key: KEYCLOAK_ISSUER_URI
-            - name: ACCESSKEY
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq
+            - name: SPRING_RABBITMQ_PORT
+              value: "5672"
+            - name: SPRING_RABBITMQ_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: event-hub-secrets
-                  key: AWS_ACCESS_KEY_ID
-            - name: SECRET
+                  key: RABBITMQ_DEFAULT_USER
+            - name: SPRING_RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: event-hub-secrets
-                  key: AWS_SECRET_ACCESS_KEY
-            - name: BUCKETNAME
+                  key: RABBITMQ_DEFAULT_PASS
+            - name: EVENTHUB_NOTIFICATION_BOOKING_QUEUE
               valueFrom:
                 configMapKeyRef:
                   name: event-hub-config
-                  key: AWS_BUCKET_NAME
-            - name: REGION
-              valueFrom:
-                configMapKeyRef:
-                  name: event-hub-config
-                  key: AWS_REGION
+                  key: BOOKING_NOTIFICATION_QUEUE

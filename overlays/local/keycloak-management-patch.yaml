@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: event-hub
+spec:
+  template:
+    spec:
+      containers:
+        - name: auth-service
+          env:
+            - name: KEYCLOAK_CONFIG_NAME
+              valueFrom:
+                configMapKeyRef: null
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: KEYCLOAK_CONFIG_NAME
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: event-hub
+spec:
+  template:
+    spec:
+      containers:
+        - name: gateway-service
+          env:
+            - name: KEYCLOAK_CONFIG_NAME
+              valueFrom:
+                configMapKeyRef: null
+                secretKeyRef:
+                  name: event-hub-secrets
+                  key: KEYCLOAK_CONFIG_NAME

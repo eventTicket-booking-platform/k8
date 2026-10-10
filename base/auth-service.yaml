@@ -31,8 +31,7 @@ spec:
           ports:
             - containerPort: 9092
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: prod
+
             - name: SPRING_CLOUD_CONFIG_URI
               valueFrom:
                 configMapKeyRef:

@@ -31,8 +31,7 @@ spec:
           ports:
             - containerPort: 8761
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: prod
+
             - name: SERVER_PORT
               value: "8761"
             - name: EUREKA_CLIENT_REGISTER_WITH_EUREKA

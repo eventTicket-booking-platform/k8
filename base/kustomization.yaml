@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: event-hub
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - rabbitmq.yaml
+  - config-server.yaml
+  - eureka-server.yaml
+  - auth-service.yaml
+  - event-service.yaml
+  - booking-service.yaml
+  - notification-service.yaml
+  - gateway-service.yaml
+  - frontend-ticket.yaml
+  - frontend-admin.yaml

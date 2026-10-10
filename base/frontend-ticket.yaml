@@ -3,9 +3,6 @@ kind: Service
 metadata:
   name: frontend-ticket
   namespace: event-hub
-  annotations:
-    cloud.google.com/backend-config: '{"default":"frontend-ticket-backendconfig"}'
-    cloud.google.com/neg: '{"ingress": true}'
 spec:
   ports:
     - port: 3000

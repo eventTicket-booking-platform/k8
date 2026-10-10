@@ -32,7 +32,7 @@ metadata:
   name: rabbitmq-management
   namespace: event-hub
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - name: management
       port: 15672

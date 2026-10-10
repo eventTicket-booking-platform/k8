@@ -31,8 +31,7 @@ spec:
           ports:
             - containerPort: 9090
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: prod
+
             - name: GATEWAY_ROUTES_EVENT_SERVICE_URI
               value: "http://event-service:9091"
             - name: GATEWAY_ROUTES_AUTH_SERVICE_URI
